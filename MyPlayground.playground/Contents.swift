@@ -10,7 +10,11 @@ struct JsonValue{
     let string: String?
     let int: Int?
     let double: Double?
-    
+    init(){
+        self.string = nil
+        self.int    = nil
+        self.double = nil
+    }
     init(string: String){
         self.string = string
         self.int    = nil
@@ -31,42 +35,109 @@ struct JsonValue{
 }
 
 /**
- * 一个节点的结构
+ * 一个节点的值结构
  * 每一个键值对就看成是一个节点
  * 有可能是一个具体的值 也 有可能包含了子节点
  */
 struct JsonNode{
-    let key: String
     let val: JsonValue?
     let node: Dictionary<String, JsonNode>?
     
-    init(key: String, val: JsonValue){
-        self.key = key
+    init(val: JsonValue){
         self.val = val
         self.node = nil
     }
     
-    init(key: String, node: Dictionary<String, JsonNode>){
-        self.key = key
+    init(node: Dictionary<String, JsonNode>){
         self.val = nil
         self.node = node
     }
 }
 
+extension String {
+    //分割字符串
+    func explode(分隔符 delimiter: String) -> [String]{
+        return self.componentsSeparatedByString(delimiter)
+    }
+    
+    //去除左右空格和换行符
+    func trim() -> String{
+        return self.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
+    }
+    
+    //字符串替换
+    func replace(target: String, withString: String) -> String{
+        return self.stringByReplacingOccurrencesOfString(target, withString: withString)
+    }
+}
 
-var data = Dictionary<String, JsonNode>()
 
-//状态值
-let 状态 = JsonNode( key: "ret", val: JsonValue(int: 0) )
-data["ret"] = 状态
-//data["ret"]?.val?.int
 
-var 数据集 = Dictionary<String, JsonNode>()
-var 年龄 = JsonNode( key: "age", val: JsonValue(int: 28) )
-数据集["age"] = 年龄
+/*******示例*******/
+//{"ret":0,"data":{"list":[{"id":1,"name":"\u6e38\u620f"},{"id":2,"name":"\u8d44\u8baf"}],"count":30}}
+//,\"data\":{\"list\":[{\"id\":1,\"name\":\"\\u6e38\\u620f\"},{\"id\":2,\"name\":\"\\u8d44\\u8baf\"}]
+let 类型数据 = "{\"ret\":0,\"count\":30,\"name\":\"lisuliang\"}"
 
-data["data"] = JsonNode( key:"data", node:数据集 )
-data["data"]?.node!["age"]?.val?.int
+func parseJson(str: String) -> Dictionary<String,JsonNode> {
+    var tempJsonData = str
+    if 类型数据.hasPrefix("{"){
+        //去除第一个字符 和 最后一个字符
+        tempJsonData = tempJsonData.substringWithRange(Range(tempJsonData.startIndex.advancedBy(1)..<tempJsonData.endIndex.advancedBy(-1)))
+    }
+    
+    //按,分割成数组  一个个键值对
+    let 数组键值对 = tempJsonData.explode(分隔符:",")
+    for 键值对 in 数组键值对{
+        //去除空格换行符
+        let 去除空格换行 = 键值对.trim()
+        //按冒号分割
+        var 键值分离 = 去除空格换行.explode(分隔符: ":")
+        //判断val是否有" 以及小数点 确定数据类型
+        var val = JsonValue()
+        if (键值分离[1].rangeOfString("\"") != nil){ //字符串值类型
+            键值分离[1] = 键值分离[1].replace("\"", withString: "")
+            val = JsonValue(string: 键值分离[1])
+        }else if( 键值分离[1].rangeOfString(".") != nil ){ //小数类型
+            val = JsonValue(double: Double(键值分离[1]))
+        }else{ //整数类型
+            val = JsonValue(int: Int(键值分离[1])) //Int(键值分离[1]) 字符串转int
+        }
+        键值分离[0] = 键值分离[0].replace("\"", withString: "")
+        解析成字典[键值分离[0]] = JsonNode(val: val)
+    }
+    
+    return 解析成字典
+}
+
+var 解析成字典 = Dictionary<String,JsonNode>()
+parseJson(类型数据)
+
+
+for (key,val) in 解析成字典{
+    if let a=val.val!.int {
+        print("\(key) 整数值为 \(a)")
+        continue
+    }
+    
+    if let a=val.val!.string {
+        print("\(key) 字符串值为 \(a)")
+        continue
+    }
+}
+
+解析成字典["name"]?.val?.string
+
+
+
+
+
+
+
+
+
+
+/*********示例end***********/
+
 
 
 
@@ -157,79 +228,6 @@ if jsonStr.hasPrefix("{"){
 解析后JSON["a"]?.string
 解析后JSON["c"]?.string
 
-
-
-
-
-
-
-
-var digitIndex = 1
-var decimalBase = 1
-while digitIndex > 0 {
-    decimalBase *= 10
-    digitIndex -= 1
-}
-decimalBase
-(123/decimalBase) % 10
-
-
-var l = UIScreen.mainScreen().bounds.size
-
-
-
-class Room{
-    var rooms = [Int]()
-    var numberOfRooms: Int {
-        return rooms.count
-    }
-    
-    subscript(i: Int) -> Int {
-        return rooms[i]
-    }
-    
-}
-
-extension Room {
-    var woaini: Int? {
-        return self.rooms[3]
-    }
-}
-
-
-
-var haha = Room()
-haha.rooms = [1,2,3,4,5]
-
-haha.numberOfRooms
-
-haha.woaini
-
-var jiebao: Int? = 2
-jiebao!
-
-func showJiebao(a:Int?) -> Int? {
-    guard let a = a else {
-        return nil
-    }
-    return a * 2
-}
-
-showJiebao(jiebao)
-
-
-extension Int {
-    //参数是一个空函数
-    func repeatEcho( task:()->() ){
-        for _ in 1...self{
-            task()
-        }
-    }
-}
-
-2.repeatEcho({
-    print("我是重复的")
-})
 
 
 
