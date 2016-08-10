@@ -55,6 +55,24 @@ struct JsonNode{
 }
 
 extension String {
+    
+    func subChar(i:Int) -> Character{
+        if i<0{
+            return self[self.endIndex.advancedBy(i)]
+        }else{
+            return self[self.startIndex.advancedBy(i)]
+        }
+    }
+    
+    func substr(s: Int, e: Int) -> String{
+        return self.substringWithRange(Range(self.startIndex.advancedBy(s)...self.startIndex.advancedBy(e)))
+    }
+    
+    //替换字符串
+    mutating func strReplace(s: Int, e: Int, withStr: String){
+        return self.replaceRange(Range(self.startIndex.advancedBy(s)...self.startIndex.advancedBy(e)), with: withStr)
+    }
+    
     //分割字符串
     func explode(分隔符 delimiter: String) -> [String]{
         return self.componentsSeparatedByString(delimiter)
@@ -69,20 +87,66 @@ extension String {
     func replace(target: String, withString: String) -> String{
         return self.stringByReplacingOccurrencesOfString(target, withString: withString)
     }
+    
+    //去除第一个字符和最后一个字符
+    func clearHeadAndTail() -> String{
+        return self.substringWithRange( Range(self.startIndex.advancedBy(1)..<self.endIndex.advancedBy(-1)) )
+    }
 }
 
 
 
 /*******示例*******/
-//{"ret":0,"data":{"list":[{"id":1,"name":"\u6e38\u620f"},{"id":2,"name":"\u8d44\u8baf"}],"count":30}}
-//,\"data\":{\"list\":[{\"id\":1,\"name\":\"\\u6e38\\u620f\"},{\"id\":2,\"name\":\"\\u8d44\\u8baf\"}]
-let 类型数据 = "{\"ret\":0,\"count\":30,\"name\":\"lisuliang\"}"
+var 类型数据 = "{\"ret\":0,\"data\":{\"name\":\"lisulaing\",\"score\":{\"yuwen\":100,\"yingyu\":100}},\"level\":[1,8,9]}"
+
+//逐字符遍历查找次级的{} 和 [] 分别用特定字符替换
+类型数据 = 类型数据.clearHeadAndTail()
+
+var subStrArray1 = [String]() //存放替换掉得字符串
+var subStrArray2 = [String]() //存放替换掉得字符串
+func repeatLevel(inout str: String, i:Int, type:Int=1){
+    let left:Character
+    let right:Character
+    if type==1{
+        left = "{"; right = "}"
+    }else{
+        left = "["; right = "]"
+    }
+    var j=0,ikeyStart=0,ikeyEnd=0
+    for (k,v) in str.characters.enumerate(){
+        if v==left {
+            j+=1
+            if ikeyStart==0 {
+                ikeyStart = k
+            }
+        }
+        if v==right {
+            j-=1
+            if j==0 {
+                ikeyEnd = k
+                if type==1{
+                    subStrArray1.append(str.substr(ikeyStart, e: ikeyEnd))
+                    str.strReplace(ikeyStart, e: ikeyEnd, withStr: "\"#\(i)#\"")
+                }else{
+                    subStrArray2.append(str.substr(ikeyStart, e: ikeyEnd))
+                    str.strReplace(ikeyStart, e: ikeyEnd, withStr: "\"@\(i)@\"")
+                }
+                
+                repeatLevel(&str, i: i+1, type: type)
+                break;
+            }
+        }
+    }
+}
+repeatLevel(&类型数据, i: 0, type: 1)
+repeatLevel(&类型数据, i: 0, type: 2)
 
 func parseJson(str: String) -> Dictionary<String,JsonNode> {
+    var 解析成字典 = Dictionary<String,JsonNode>()
     var tempJsonData = str
     if 类型数据.hasPrefix("{"){
         //去除第一个字符 和 最后一个字符
-        tempJsonData = tempJsonData.substringWithRange(Range(tempJsonData.startIndex.advancedBy(1)..<tempJsonData.endIndex.advancedBy(-1)))
+        tempJsonData = tempJsonData.clearHeadAndTail()
     }
     
     //按,分割成数组  一个个键值对
@@ -105,15 +169,12 @@ func parseJson(str: String) -> Dictionary<String,JsonNode> {
         键值分离[0] = 键值分离[0].replace("\"", withString: "")
         解析成字典[键值分离[0]] = JsonNode(val: val)
     }
-    
     return 解析成字典
 }
 
-var 解析成字典 = Dictionary<String,JsonNode>()
-parseJson(类型数据)
+let data = parseJson(类型数据)
 
-
-for (key,val) in 解析成字典{
+for (key,val) in data{
     if let a=val.val!.int {
         print("\(key) 整数值为 \(a)")
         continue
@@ -125,109 +186,7 @@ for (key,val) in 解析成字典{
     }
 }
 
-解析成字典["name"]?.val?.string
-
-
-
-
-
-
-
-
-
+data["data"]?.val?.string
 
 /*********示例end***********/
-
-
-
-
-
-
-let 构建个数据: Dictionary = ["a":"b", "age":"18"]
-
-let arr = [[1],[2,3]]
-
-
-//json数据值结构体
-
-
-struct JsonKeyValue{
-    let key: String
-    let val: JsonValue
-}
-
-var 整形数json = "[1,2,3,\"a\":\"b\"]"
-var 解析后整形 = Dictionary<String,JsonValue>()
-
-//解析键值对
-func parseKeyValue(str:String) -> Dictionary<String,JsonValue>
-{
-    var ret = Dictionary<String,JsonValue>()
-    
-    let 去除空格换行 = str.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
-    let 替换双引号 = 去除空格换行.stringByReplacingOccurrencesOfString("\"", withString: "")
-    
-    let 拆分键值对 = 替换双引号.componentsSeparatedByString(":")
-    let key = 拆分键值对[0]
-    let val = 拆分键值对[1]
-    ret[key] = JsonValue(string: val)
-    
-    return ret
-}
-
-//解析json中的数组
-func parseArray(json:String) -> Dictionary<String,JsonValue>
-{
-    var 解析后整形1 = Dictionary<String,JsonValue>()
-    //去除[]
-    let 去除中括号 = 整形数json.substringWithRange( Range(整形数json.startIndex.advancedBy(1)..<整形数json.endIndex.advancedBy(-1)) )
-    
-    //用逗号分隔成数组
-    let 数组 = 去除中括号.componentsSeparatedByString(",")
-
-    for (key,item) in 数组.enumerate(){
-        //判断是否为对象形式
-        if item.localizedStandardContainsString(":") {
-            let temp = parseKeyValue(item)
-            解析后整形1[temp.keys.first!] = temp.values.first
-        }else{
-            let strKey = "\(key)" //key值转为字符串
-            解析后整形1[strKey] = JsonValue(int: Int(item))   //字符串转为整形
-        }
-    }
-    return 解析后整形1
-}
-解析后整形 = parseArray(整形数json)
-解析后整形["a"]?.string
-
-
-
-
-
-var jsonStr = "{\"a\":\"b\", \"c\":\"d\"}";
-//jsonStr.characters.count
-
-var 解析后JSON = Dictionary<String,JsonValue>()
-
-if jsonStr.hasPrefix("{"){
-    //去除最外层的 {}
-    jsonStr = jsonStr.substringWithRange( Range(jsonStr.startIndex.advancedBy(1) ..< jsonStr.endIndex.advancedBy(-1)) )
-    
-    let arr = jsonStr.componentsSeparatedByString(",")
-    for item in arr{
-        let 去除空格换行 = item.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
-        let 替换双引号 = 去除空格换行.stringByReplacingOccurrencesOfString("\"", withString: "")
-    
-        let 拆分键值对 = 替换双引号.componentsSeparatedByString(":")
-        let key = 拆分键值对[0]
-        let val = 拆分键值对[1]
-        解析后JSON[key] = JsonValue(string: val)
-    }
-}
-
-解析后JSON["a"]?.string
-解析后JSON["c"]?.string
-
-
-
 
